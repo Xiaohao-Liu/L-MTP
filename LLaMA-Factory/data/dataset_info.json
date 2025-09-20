@@ -1,0 +1,23 @@
+{
+  "mixed_L31_8B": {
+    "file_name": "mixed_alpaca_gpt4-1_math-1_evol_instruct-1_meta-llama_Meta-Llama-3.1-8B_alpaca.json"
+  },
+  "mixed_10K": {
+    "file_name": "mixed_alpaca_gpt4-2K_math-4K_evol_instruct_GPT4-4K_alpaca.json"
+  },
+  "mixed_G3_4b": {
+    "file_name": "mixed_alpaca_gpt4-1_math-1_evol_instruct-1_google_gemma-3-4b-pt_alpaca.json"
+  },
+  "mixed_G3_12b": {
+    "file_name": "mixed_alpaca_gpt4-1_math-1_evol_instruct-1_google_gemma-3-12b-pt_alpaca.json"
+  },
+  "mixed_L32_3B": {
+    "file_name": "mixed_alpaca_gpt4-1_math-1_evol_instruct-1_meta-llama_Llama-3.2-3B_alpaca.json"
+  },
+  "mixed_Q25_3B": {
+    "file_name": "mixed_alpaca_gpt4-1_math-1_evol_instruct-1_Qwen_Qwen2.5-3B_alpaca.json"
+  },
+  "mixed_Q25_7B": {
+    "file_name": "mixed_alpaca_gpt4-1_math-1_evol_instruct-1_Qwen_Qwen2.5-7B_alpaca.json"
+  }
+}

@@ -1,0 +1,48 @@
+### model
+model_name_or_path: Qwen/Qwen2.5-3B
+trust_remote_code: true
+mtp_type: lmtp2
+num_heads: 3
+head_weight: 0.1
+stage1_pretrained_path: /home/storage/LMTP/saves/qwen2_5_3b/full/sft_lmtp_stage1
+
+
+### method
+stage: sft
+do_train: true
+finetuning_type: lora
+lora_rank: 32
+lora_alpha: 16
+lora_target: all
+train_lm_head: false
+pure_bf16: true # important for full parameter fine-tuning, if false, it will use fp32 ! if deepspeed is used, do not set pure_bf16
+
+
+### dataset
+dataset: mixed_10K
+template: qwen
+cutoff_len: 1024
+overwrite_cache: true
+preprocessing_num_workers: 16
+dataloader_num_workers: 4
+
+### output
+output_dir: ../saves/qwen2_5_3b/lora/sft_lmtp_stage2_0.02
+logging_steps: 10
+save_strategy: "no"
+plot_loss: true
+overwrite_output_dir: true
+save_only_model: false
+report_to: none  # choices: [none, wandb, tensorboard, swanlab, mlflow]
+
+### train
+per_device_train_batch_size: 8
+gradient_accumulation_steps: 8
+learning_rate: 1.0e-5
+num_train_epochs: 3
+lr_scheduler_type: cosine
+warmup_ratio: 0.1
+bf16: true
+ddp_timeout: 180000000
+resume_from_checkpoint: null
+
