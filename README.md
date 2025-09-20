@@ -32,7 +32,7 @@ Large Language Models (LLMs) are typically trained and deployed using Next-Token
 ## Update
 
 - (**2025/09/19**) L-MTP is accepted by NeurIPS 2025.
-- (**2025/09/19**) The code of L-MTP is released. 
+- (**2025/09/19**) The code and dataset of L-MTP are released. 
 - (**2025/05/23**) The preprint of L-MTP is on [arXiv](https://arxiv.org/pdf/2505.17505).
 
 
