@@ -74,7 +74,7 @@ You can also integrate L-MTP decoding method (see implemetation in `models/lmtp/
 
 The paper evaluates L-MTP on a diverse set of base LLMs: **Qwen 2.5** (3B, 7B), **Llama 3.2** (3B), **Llama 3.1** (8B), and **Gemma 3** (4B, 12B).
 
-Training datasets are curated from:  **Math** (Hendrycks et al.), **Evol-Instruct-Code** (Luo et al., Chaudhary) and **Alpaca-GPT4** (Peng et al.). You can go through our dataset in `LLaMA-Factory/data:dataset_info.json`.
+Training datasets are curated from:  **Math** (Hendrycks et al.), **Evol-Instruct-Code** (Luo et al., Chaudhary) and **Alpaca-GPT4** (Peng et al.). You can go through our dataset in `LLaMA-Factory/data:dataset_info.json` and [link](https://huggingface.co/datasets/xiao-hao/self-distillation-LLMs).
 
 
 ---
