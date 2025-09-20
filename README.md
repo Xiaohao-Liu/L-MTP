@@ -25,7 +25,7 @@
 
 ![](images/lmtp.jpg)
 
-<center><strong>An extendable MTP paradigm with <i>leaping</i> capability for both training and inference.</strong></center>
+<h4 align="center">An extendable MTP paradigm with <i>leaping</i> capability for both training and inference.</h4>
 
 Large Language Models (LLMs) are typically trained and deployed using Next-Token Prediction (NTP), an inherently sequential process that limits contextual coverage and inference efficiency. To address this, we propose **Leap Multi-Token Prediction (L-MTP)**, an innovative method that extends Multi-Token Prediction (MTP) by strategically skipping intermediate tokens to predict non-adjacent future tokens in a single forward pass. L-MTP enhances the model's ability to capture long-range dependencies and enables a specialized decoding strategy that significantly accelerates inference.
 
