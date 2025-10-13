@@ -1,2 +1,4 @@
 LLaMA-Factory/data/mixed*
 *.ipynb
+saves/*
+model_card.md
