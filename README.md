@@ -62,7 +62,7 @@ CUDA_VISIBLE_DEVICES=1,2,3,4 FORCE_TORCHRUN=1 llamafactory-cli train ../configs/
 
 For inference, load a trained L-MTP model and use the provided decoding script. The model will automatically use the backward-looking strategy for efficient generation.
 
-Evaluate the model in NTP mode (this mode is quite compatible with recent evaluation framework, e.g., lm-evaluation-harness and MathRuler) by exporting first. 
+Evaluate the model in NTP mode (this mode is quite compatible with the recent evaluation framework. In our case, we use _lm_eval_ (EleutherAI/lm-evaluation-harness) for general tasks, _evalplus_ (evalplus/evalplus) for code tasks, and _MathRuler_ (hiyouga/MathRule) for math tasks.) by exporting first. 
 ```bash
 CUDA_VISIBLE_DEVICES=4,7 llamafactory-cli export ../configs/merge/gemma3_12B_base_lmtp_stage2.yaml
 ```
