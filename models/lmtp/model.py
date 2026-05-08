@@ -11,8 +11,8 @@ import torch.nn as nn
 from ..base.kv_cache import initialize_past_key_values
 from transformers.generation.utils import GenerateDecoderOnlyOutput, CausalLMOutputWithPast
 from ..utils import prepare_logits_processor, reset_tree_mode, reset_past_key_values,  evaluate_posterior, generate_candidates
-from ..medusa.utils import initialize_tree, tree_decoding, generate_tree_buffers, update_inference_inputs
-from ..eagle1.utils import initialize_tree as initialize_tree_eagle, tree_decoding as tree_decoding_eagle, update_inference_inputs as update_inference_inputs_eagle
+from ..utils import initialize_tree, tree_decoding, generate_tree_buffers, update_inference_inputs
+from ..utils_eg import initialize_tree as initialize_tree_eagle, tree_decoding as tree_decoding_eagle, update_inference_inputs as update_inference_inputs_eagle
 
 from peft import PeftModel, PeftConfig
 

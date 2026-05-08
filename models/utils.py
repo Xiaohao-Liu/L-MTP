@@ -190,3 +190,210 @@ def generate_candidates(tree_logits, tree_indices, retrieve_indices, sample_toke
     return cart_candidates, cart_candidates_prob, tree_candidates
 
 
+
+
+def initialize_tree(input_ids, model, tree_attn_mask, past_key_values, logits_processor):
+    """
+    Initializes the Tree structure for a given model.
+
+    This function performs the following operations:
+    1. Forward pass through the model to obtain the Tree logits, original model outputs, and logits.
+    2. Sets the Tree attention mask within the base model.
+
+    Args:
+    - input_ids (torch.Tensor): The input tensor containing token ids.
+    - model (TreeLMHead): The model containing the Tree layers and base model.
+    - tree_attn_mask (torch.Tensor): The attention mask designed specifically for the Tree structure.
+    - past_key_values (list of torch.Tensor): Contains past hidden states and past attention values.
+
+    Returns:
+    - tree_logits (torch.Tensor): Logits from the Tree heads.
+    - logits (torch.Tensor): Original logits from the base model.
+    """
+        
+    tree_logits, outputs, logits = model(
+        input_ids, past_key_values=past_key_values, output_orig=True
+    )
+    
+    if logits_processor is not None:
+        logits = logits[:, -1]
+        logits = logits_processor(None, logits)
+        probabilities = torch.nn.functional.softmax(logits, dim=1)
+        token = torch.multinomial(probabilities, 1)
+    else:
+        token = torch.argmax(logits[:, -1])
+        token = token[None, None]
+        
+    model.model.tree_mask = tree_attn_mask
+    return tree_logits, logits, token
+
+
+def tree_decoding(
+        model,
+        tree_candidates,
+        past_key_values,
+        tree_position_ids,
+        input_ids,
+        retrieve_indices,
+):
+    position_ids = tree_position_ids + input_ids.shape[1]
+    
+    tree_logits, outputs, logits = model(
+        tree_candidates,
+        output_orig=True,
+        past_key_values=past_key_values,
+        position_ids=position_ids,
+        direct = True
+    )
+    logits = logits[0, retrieve_indices]
+    
+    return None, logits, outputs
+
+
+def generate_tree_buffers(tree_choices, device="cuda"):
+    """
+    Generate buffers for the Tree structure based on the provided choices.
+    
+    Parameters:
+    - tree_choices (list): A nested list representing tree in the Tree structure.
+    - device (str): Device to which the tensors should be moved. Default is "cuda".
+    
+    Returns:
+    - dict: A dictionary containing buffers related to the Tree structure.
+    """
+
+    # Sort the tree_choices based on their lengths and then their values
+    sorted_tree_choices = sorted(tree_choices, key=lambda x: (len(x), x))
+    tree_len = len(sorted_tree_choices) + 1
+
+    # Initialize depth_counts to keep track of how many choices have a particular depth
+    depth_counts = []
+    prev_depth = 0
+    for path in sorted_tree_choices:
+        depth = len(path)
+        if depth != prev_depth:
+            depth_counts.append(0)
+        depth_counts[depth - 1] += 1
+        prev_depth = depth
+    
+    tree_attn_mask = torch.eye(tree_len, tree_len)
+    tree_attn_mask[:, 0] = 1
+    start = 0
+    for i in range(len(depth_counts)):
+        for j in range(depth_counts[i]):
+            cur_tree_choice = sorted_tree_choices[start + j]
+            # retrieve ancestor position
+            if len(cur_tree_choice) == 1:
+                continue
+            ancestor_idx = []
+            for c in range(len(cur_tree_choice) - 1):
+                ancestor_idx.append(sorted_tree_choices.index(cur_tree_choice[:c+1]) + 1)
+            tree_attn_mask[j + start + 1, ancestor_idx] = 1
+        start += depth_counts[i]
+
+    # Generate tree indices for the Tree structure
+    tree_indices = torch.zeros(tree_len, dtype=torch.long)
+    tree_indices[0] = 0
+    start = 0
+    for i in range(len(depth_counts)):
+        for j in range(depth_counts[i]):
+            cur_tree_choice = sorted_tree_choices[start + j]
+            tree_indices[start + j + 1] = cur_tree_choice[-1] + TOPK * i + 1
+        start += depth_counts[i]
+
+    # Generate position IDs for the Tree structure
+    tree_position_ids = torch.zeros(tree_len, dtype=torch.long)
+    start = 0
+    for i in range(len(depth_counts)):
+        tree_position_ids[start + 1: start + depth_counts[i] + 1] = i + 1
+        start += depth_counts[i]
+
+    # Generate retrieval indices for Tree structure verification
+    retrieve_indices_nest = []
+    retrieve_paths = []
+    for i in range(len(sorted_tree_choices)):
+        cur_tree_choice = sorted_tree_choices[-i - 1]
+        retrieve_indice = []
+        if cur_tree_choice in retrieve_paths:
+            continue
+        else:
+            for c in range(len(cur_tree_choice)):
+                retrieve_indice.append(sorted_tree_choices.index(cur_tree_choice[:c + 1]))
+                retrieve_paths.append(cur_tree_choice[:c + 1])
+        retrieve_indices_nest.append(retrieve_indice)
+    max_length = max([len(x) for x in retrieve_indices_nest])
+    retrieve_indices = [pad_path(path, max_length) for path in retrieve_indices_nest]
+    retrieve_indices = torch.tensor(retrieve_indices, dtype=torch.long)
+    retrieve_indices = retrieve_indices + 1
+    retrieve_indices = torch.cat([torch.zeros((retrieve_indices.shape[0], 1), dtype=torch.long), retrieve_indices], dim=1)
+
+    # Aggregate the generated buffers into a dictionary
+    tree_buffers = {
+        "tree_attn_mask": tree_attn_mask.unsqueeze(0).unsqueeze(0),
+        "tree_indices": tree_indices,
+        "tree_position_ids": tree_position_ids,
+        "retrieve_indices": retrieve_indices,
+    }
+
+    # Move the tensors in the dictionary to the specified device
+    tree_buffers = {
+        k: v.clone().to(device)
+        if isinstance(v, torch.Tensor)
+        else torch.tensor(v, device=device)
+        for k, v in tree_buffers.items()
+    }
+
+    return tree_buffers
+
+def update_inference_inputs(
+    input_ids,
+    candidates,
+    best_candidate,
+    accept_length,
+    retrieve_indices,
+    outputs,
+    logits,
+    tree_logits,
+    new_token,
+    past_key_values_data_list,
+    current_length_data,
+    logits_processor
+):
+    # Calculate the starting position for new tokens based on the previous input length
+    prev_input_len = input_ids.shape[1]
+    # Map the best candidate indices to the original indices in the sequence
+    select_indices = (
+        retrieve_indices[best_candidate, : accept_length + 1] + prev_input_len
+    )
+    # Append the tokens from the best candidate to the input sequence
+    input_ids = torch.cat(
+        [input_ids, candidates[None, best_candidate, : accept_length + 1]], dim=-1
+    )
+    # Update the past key values based on the selected tokens
+    for past_key_values_data in past_key_values_data_list:
+        tgt = past_key_values_data[..., select_indices.to(past_key_values_data.device), :]
+        # Destination tensor where the relevant past information will be stored
+        dst = past_key_values_data[..., prev_input_len: prev_input_len + tgt.shape[-2], :]
+        # Copy relevant past information from the source to the destination
+        dst.copy_(tgt, non_blocking=True)
+
+    # Update the current length tensor (currently only support batch size is 1)
+    current_length_data.fill_(prev_input_len + tgt.shape[-2])
+
+    # Extract logits and tree logits for the accepted tokens
+    logits = logits[None, best_candidate, accept_length : accept_length + 1]
+
+    tree_logits = None
+    # Update the new token counter
+    new_token += accept_length + 1
+    
+    if logits_processor is not None:
+        logits = logits[:, -1]
+        logits = logits_processor(None, logits)
+        probabilities = torch.nn.functional.softmax(logits, dim=1)
+        token = torch.multinomial(probabilities, 1)
+    else:
+        token = torch.argmax(logits[:, -1])
+        token = token[None, None]
+
+    return input_ids, logits, tree_logits, new_token, token
